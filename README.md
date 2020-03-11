@@ -7,3 +7,5 @@ https://bit.ly/stop-coronavirus
 
 https://coronavirus.jhu.edu/map.html
 
+https://www.cdc.gov/coronavirus/2019-ncov/index.html
+
