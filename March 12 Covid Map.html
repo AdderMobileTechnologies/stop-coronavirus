@@ -1,0 +1,229 @@
+
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <title>Kepler.gl embedded map</title>
+
+        <!--Uber Font-->
+        <link rel="stylesheet" href="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css">
+
+        <!--MapBox css-->
+        <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css" rel="stylesheet">
+
+        <!-— facebook open graph tags -->
+        <meta property="og:url" content="http://kepler.gl/" />
+        <meta property="og:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool" />
+        <meta property="og:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets." />
+        <meta property="og:site_name" content="kepler.gl" />
+        <meta property="og:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="800" />
+        <meta property="og:image:height" content="800" />
+
+        <!-— twitter card tags -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:site" content="@uber">
+        <meta name="twitter:creator" content="@uber">
+        <meta name="twitter:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool">
+        <meta name="twitter:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets.">
+        <meta name="twitter:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+
+        <!-- Load React/Redux -->
+        <script src="https://unpkg.com/react@16.8.4/umd/react.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@16.8.4/umd/react-dom.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/redux@3.7.2/dist/redux.js" crossorigin></script>
+        <script src="https://unpkg.com/react-redux@5.1.1/dist/react-redux.min.js" crossorigin></script>
+        <script src="https://unpkg.com/styled-components@4.1.3/dist/styled-components.min.js" crossorigin></script>
+
+        <!-- Load Kepler.gl -->
+        <script src="https://unpkg.com/kepler.gl@2.0.1/umd/keplergl.min.js" crossorigin></script>
+
+        <style type="text/css">
+          body {margin: 0; padding: 0; overflow: hidden;}
+        </style>
+
+        <!--MapBox token-->
+        <script>
+          /**
+           * Provide your MapBox Token
+           **/
+          const MAPBOX_TOKEN = 'pk.eyJ1IjoiZ3JhbmRtYXN0ZXItYWRkZXIiLCJhIjoiY2s3NWZ0MTJqMHVvbTNtbnh6cm56bmFvcCJ9.3zckZvouQF9NsuZKLpPULg';
+          const WARNING_MESSAGE = 'Please Provide a Mapbox Token in order to use Kepler.gl. Edit this file and fill out MAPBOX_TOKEN with your access key';
+        </script>
+
+        <!-- GA: Delete this as you wish, However to pat ourselves on the back, we only track anonymous pageview to understand how many people are using kepler.gl. -->
+        <script>
+          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+          ga('create', 'UA-64694404-19', {
+            'storage': 'none',
+            'clientId': localStorage.getItem('ga:clientId')
+          });
+          ga(function(tracker) {
+              localStorage.setItem('ga:clientId', tracker.get('clientId'));
+          });
+          ga('set', 'checkProtocolTask', null); // Disable file protocol checking.
+          ga('set', 'checkStorageTask', null); // Disable cookie storage checking.
+          ga('set', 'historyImportTask', null); // Disable history checking (requires reading from cookies).
+          ga('set', 'page', 'keplergl-html');
+          ga('send', 'pageview');
+        </script>
+      </head>
+      <body>
+        <!-- We will put our React component inside this div. -->
+        <div id="app">
+          <!-- Kepler.gl map will be placed here-->
+        </div>
+
+        <!-- Load our React component. -->
+        <script>
+          /* Validate Mapbox Token */
+          if ((MAPBOX_TOKEN || '') === '' || MAPBOX_TOKEN === 'PROVIDE_MAPBOX_TOKEN') {
+            alert(WARNING_MESSAGE);
+          }
+
+          /** STORE **/
+          const reducers = (function createReducers(redux, keplerGl) {
+            return redux.combineReducers({
+              // mount keplerGl reducer
+              keplerGl: keplerGl.keplerGlReducer.initialState({
+                uiState: {
+                  readOnly: true,
+                  currentModal: null
+                }
+              })
+            });
+          }(Redux, KeplerGl));
+
+          const middleWares = (function createMiddlewares(keplerGl) {
+            return keplerGl.enhanceReduxMiddleware([
+              // Add other middlewares here
+            ]);
+          }(KeplerGl));
+
+          const enhancers = (function craeteEnhancers(redux, middles) {
+            return redux.applyMiddleware(...middles);
+          }(Redux, middleWares));
+
+          const store = (function createStore(redux, enhancers) {
+            const initialState = {};
+
+            return redux.createStore(
+              reducers,
+              initialState,
+              redux.compose(enhancers)
+            );
+          }(Redux, enhancers));
+          /** END STORE **/
+
+          /** COMPONENTS **/
+          var KeplerElement = (function makeKeplerElement(react, keplerGl, mapboxToken) {
+            var LogoSvg = function LogoSvg() {
+              return react.createElement(
+                "div",
+                { className: "logo-container", style: {position: 'fixed', zIndex: 10000, padding: '4px'} },
+                  react.createElement(
+                    "svg",
+                    {
+                      className: "kepler_gl__logo",
+                      width: "107px",
+                      height: "21px",
+                      viewBox: "0 0 124 24"
+                    },
+                    react.createElement(
+                      "g",
+                      { transform: "translate(13.500000, 13.500000) rotate(45.000000) translate(-13.500000, -13.500000) translate(4.000000, 4.000000)" },
+                      react.createElement("rect", { x: "0", y: "6", transform: "matrix(2.535181e-06 1 -1 2.535181e-06 18.1107 6.0369)", fill: "#535C6C", width: "12.1", height: "12.1" }),
+                      react.createElement("rect", { x: "6", y: "0", transform: "matrix(2.535182e-06 1 -1 2.535182e-06 18.1107 -6.0369)", fill:"#1FBAD6", width: "12.1", height: "12.1" })
+                    ),
+                    react.createElement(
+                      "g",
+                      {},
+                      react.createElement("path", { fill:"#1FBAD6", d: "M39,8.7h2.2l-2.8,4.2l2.9,5.1H39l-2.4-4.2h-1.3V18h-2V5l2-0.1v7.3h1.3L39,8.7z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M42.4,13.3c0-1.5,0.4-2.7,1.1-3.5s1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C42.8,16.1,42.4,14.9,42.4,13.3z M46.6,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S47.2,10.1,46.6,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M57.1,18.2c-1,0-1.8-0.3-2.3-0.9l0,0l0,1.3v2.5h-2V8.7h1.5l0.3,0.9h0c0.3-0.3,0.7-0.6,1.2-0.7 c0.4-0.2,0.9-0.3,1.4-0.3c1.2,0,2.1,0.4,2.7,1.1c0.6,0.7,0.9,2,0.9,3.7c0,1.6-0.3,2.8-1,3.7C59.2,17.8,58.3,18.2,57.1,18.2z M56.7,10.3c-0.4,0-0.8,0.1-1.1,0.2c-0.3,0.2-0.6,0.4-0.8,0.7v4.3c0.2,0.3,0.4,0.5,0.7,0.7c0.3,0.2,0.7,0.3,1.1,0.3 c0.7,0,1.2-0.2,1.6-0.7c0.4-0.5,0.5-1.3,0.5-2.5c0-0.8-0.1-1.4-0.2-1.8s-0.4-0.7-0.7-0.9C57.6,10.4,57.2,10.3,56.7,10.3z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M63.2,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S63.2,16.8,63.2,16z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M68.2,13.3c0-1.5,0.4-2.7,1.1-3.5c0.7-0.8,1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C68.6,16.1,68.2,14.9,68.2,13.3z M72.4,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S73,10.1,72.4,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M80.2,8.7l0.1,1.7h0c0.3-0.6,0.7-1.1,1.1-1.4c0.4-0.3,1-0.5,1.6-0.5c0.4,0,0.7,0,1,0.1l-0.1,2 c-0.3-0.1-0.7-0.2-1-0.2c-0.7,0-1.3,0.3-1.7,0.8c-0.4,0.5-0.7,1.2-0.7,2.1V18h-2V8.7H80.2z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M83.8,17c0-0.8,0.4-1.2,1.2-1.2c0.8,0,1.2,0.4,1.2,1.2c0,0.8-0.4,1.1-1.2,1.1C84.2,18.2,83.8,17.8,83.8,17z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M88.5,18.7c0-0.8,0.4-1.4,1.2-1.8c-0.6-0.3-0.9-0.8-0.9-1.5c0-0.7,0.4-1.2,1.1-1.6c-0.3-0.3-0.6-0.6-0.7-0.9 c-0.2-0.4-0.2-0.8-0.2-1.3c0-1,0.3-1.8,0.9-2.3c0.6-0.5,1.6-0.8,2.8-0.8c0.5,0,1,0,1.4,0.1c0.4,0.1,0.8,0.2,1.1,0.4l2.4-0.2v1.5 h-1.5c0.2,0.4,0.2,0.8,0.2,1.3c0,1-0.3,1.7-0.9,2.2s-1.5,0.8-2.7,0.8c-0.7,0-1.2-0.1-1.6-0.2c-0.1,0.1-0.2,0.2-0.3,0.3 c-0.1,0.1-0.1,0.2-0.1,0.4c0,0.2,0.1,0.3,0.2,0.4c0.1,0.1,0.3,0.2,0.6,0.2l2.7,0.2c1,0.1,1.7,0.3,2.2,0.6c0.5,0.3,0.8,0.9,0.8,1.7 c0,0.6-0.2,1.1-0.5,1.5c-0.4,0.4-0.9,0.8-1.5,1c-0.7,0.2-1.5,0.4-2.4,0.4c-1.3,0-2.3-0.2-3-0.6C88.8,20.1,88.5,19.5,88.5,18.7z M95.1,18.4c0-0.3-0.1-0.5-0.3-0.7s-0.6-0.2-1.1-0.3l-2.7-0.3c-0.2,0.1-0.4,0.3-0.5,0.5c-0.1,0.2-0.2,0.4-0.2,0.6 c0,0.4,0.2,0.8,0.5,1c0.4,0.2,1,0.3,1.8,0.3C94.2,19.5,95.1,19.2,95.1,18.4z M94.3,11.5c0-0.6-0.1-1-0.4-1.2 c-0.3-0.2-0.7-0.3-1.3-0.3c-0.7,0-1.1,0.1-1.4,0.3c-0.3,0.2-0.4,0.6-0.4,1.2s0.1,1,0.4,1.2c0.3,0.2,0.7,0.3,1.4,0.3 c0.6,0,1.1-0.1,1.3-0.4S94.3,12,94.3,11.5z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M99.4,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S99.4,16.8,99.4,16z" })
+                    )
+                  )
+                );
+              };
+
+            return function App() {
+              var rootElm = react.useRef(null);
+              var _useState = react.useState({
+                width: window.innerWidth,
+                height: window.innerHeight
+              });
+              var windowDimension = _useState[0];
+              var setDimension = _useState[1];
+              react.useEffect(function sideEffect(){
+                function handleResize() {
+                  setDimension({width: window.innerWidth, height: window.innerHeight});
+                };
+                window.addEventListener('resize', handleResize);
+                return function() {window.removeEventListener('resize', handleResize);};
+              }, []);
+              return react.createElement(
+                'div',
+                {style: {position: 'absolute', left: 0, width: '100vw', height: '100vh'}},
+                LogoSvg(),
+                react.createElement(keplerGl.KeplerGl, {
+                  mapboxApiAccessToken: mapboxToken,
+                  id: "map",
+                  width: windowDimension.width,
+                  height: windowDimension.height
+                })
+              )
+            }
+          }(React, KeplerGl, MAPBOX_TOKEN));
+
+          const app = (function createReactReduxProvider(react, reactRedux, KeplerElement) {
+            return react.createElement(
+              reactRedux.Provider,
+              {store},
+              react.createElement(KeplerElement, null)
+            )
+          }(React, ReactRedux, KeplerElement));
+          /** END COMPONENTS **/
+
+          /** Render **/
+          (function render(react, reactDOM, app) {
+            reactDOM.render(app, document.getElementById('app'));
+          }(React, ReactDOM, app));
+        </script>
+        <!-- The next script will show how to interact directly with Kepler map store -->
+        <script>
+          /**
+           * Customize map.
+           * In the following section you can use the store object to dispatch Kepler.gl actions
+           * to add new data and customize behavior
+           */
+          (function customize(keplerGl, store) {
+            const datasets = [{"version":"v1","data":{"id":"4gjxuese","label":"03-12-2020.csv","color":[143,47,191],"allData":[["Hubei","China","2020-03-12T09:53:06",67781,3056,50318,30.9756,112.2707],[null,"Italy","2020-03-11T21:33:02",12462,827,1045,43,12],[null,"Iran","2020-03-12T11:13:27",10075,429,2959,32,53],[null,"Korea, South","2020-03-12T05:13:02",7869,66,333,36,128],["France","France","2020-03-11T22:53:03",2281,48,12,46.2276,2.2137],[null,"Spain","2020-03-12T01:17:58",2277,55,183,40,-4],[null,"Germany","2020-03-12T09:53:06",2078,3,25,51,9],["Guangdong","China","2020-03-12T03:53:02",1356,8,1289,23.3417,113.4244],["Henan","China","2020-03-11T08:13:09",1273,22,1249,33.882,113.614],["Zhejiang","China","2020-03-12T01:33:02",1215,1,1197,29.1832,120.0934],["Hunan","China","2020-03-12T09:53:06",1018,4,999,27.6104,111.7088],["Anhui","China","2020-03-11T02:18:14",990,6,984,31.8257,117.2264],["Jiangxi","China","2020-03-12T02:13:04",935,1,934,27.614,115.7221],["Shandong","China","2020-03-12T07:53:02",760,6,734,36.3427,118.1498],[null,"Norway","2020-03-12T13:13:31",702,0,1,60.472,8.4689],["Diamond Princess","Cruise Ship","2020-03-11T22:13:12",696,7,325,35.4437,139.638],[null,"Switzerland","2020-03-11T20:53:02",652,4,4,46.8182,8.2275],[null,"Japan","2020-03-12T05:13:02",639,16,118,36,138],["Jiangsu","China","2020-03-12T05:13:02",631,0,629,32.9711,119.455],["Denmark","Denmark","2020-03-12T09:53:06",615,0,1,56.2639,9.5018],[null,"Sweden","2020-03-12T21:39:09",599,1,1,63,16],["Chongqing","China","2020-03-12T23:44:32",576,6,564,30.0572,107.874],["Sichuan","China","2020-03-12T12:13:07",539,3,498,30.6171,102.7103],[null,"Netherlands","2020-03-11T14:13:11",503,5,0,52.1326,5.2913],["Heilongjiang","China","2020-03-12T13:13:31",482,13,441,47.862,127.7615],["UK","United Kingdom","2020-03-11T21:33:03",456,8,18,55.3781,-3.436],["Washington","US","2020-03-12T23:44:33",442,31,1,47.4009,-121.4905],["Beijing","China","2020-03-12T01:13:05",435,8,334,40.1824,116.4142],["Shanghai","China","2020-03-12T07:53:02",344,3,321,31.202,121.4491],["New York","US","2020-03-12T21:39:10",328,0,0,42.1657,-74.9481],["Hebei","China","2020-03-12T05:33:02",318,6,308,39.549,116.1306],[null,"Belgium","2020-03-11T18:52:03",314,3,1,50.8333,4],[null,"Austria","2020-03-12T11:13:29",302,1,4,47.5162,14.5501],["Fujian","China","2020-03-11T02:18:14",296,1,295,26.0789,117.9874],[null,"Qatar","2020-03-11T18:52:03",262,0,0,25.3548,51.1839],["Guangxi","China","2020-03-12T00:33:06",252,2,241,23.8298,108.7881],["Shaanxi","China","2020-03-12T01:33:02",245,2,232,35.1917,108.8701],["California","US","2020-03-12T23:44:33",221,4,6,36.1162,-119.6816],[null,"Bahrain","2020-03-11T22:33:03",195,0,35,26.0275,50.55],[null,"Singapore","2020-03-11T13:53:24",178,0,96,1.2833,103.8333],["Yunnan","China","2020-03-11T02:18:14",174,2,170,24.974,101.487],["Hainan","China","2020-03-12T03:53:02",168,6,160,19.1959,109.7453],[null,"Malaysia","2020-03-11T11:33:08",149,0,26,2.5,112.5],["Guizhou","China","2020-03-12T01:13:06",146,2,137,26.8154,106.8748],["Tianjin","China","2020-03-12T01:53:03",136,3,132,39.3054,117.323],["Shanxi","China","2020-03-12T09:13:24",133,0,132,37.5777,112.2922],[null,"Israel","2020-03-12T21:39:09",131,0,4,31,35],["Hong Kong","China","2020-03-12T01:53:02",129,3,67,22.3,114.2],["Gansu","China","2020-03-11T14:33:03",127,2,88,37.8099,101.0583],["Liaoning","China","2020-03-12T09:53:06",125,1,112,41.2956,122.6085],["Massachusetts","US","2020-03-12T21:39:09",108,0,1,42.2302,-71.5301],[null,"Iceland","2020-03-12T21:39:09",103,0,1,64.9631,-19.0208],[null,"Greece","2020-03-11T23:53:02",99,1,0,39.0742,21.8243],[null,"Czechia","2020-03-12T01:33:03",94,0,0,49.8175,15.473],["Jilin","China","2020-03-12T23:44:32",93,1,91,43.6661,126.1923],[null,"Slovenia","2020-03-12T13:33:02",89,0,0,46.1512,14.9955],[null,"United Arab Emirates","2020-03-12T21:39:09",85,0,17,23.4241,53.8478],[null,"Kuwait","2020-03-12T09:13:24",80,0,5,29.5,47.75],["Xinjiang","China","2020-03-11T02:18:14",76,3,73,41.1129,85.2401],["Inner Mongolia","China","2020-03-11T03:53:03",75,1,71,44.0935,113.9448],["Ningxia","China","2020-03-11T09:33:12",75,0,72,37.2692,106.1655],[null,"India","2020-03-12T08:33:13",73,1,4,21,78],[null,"Iraq","2020-03-12T08:33:13",71,8,15,33,44],[null,"Thailand","2020-03-12T08:53:02",70,1,34,15.87,100.9925],[null,"San Marino","2020-03-12T08:53:02",69,3,0,43.9424,12.4578],[null,"Egypt","2020-03-12T08:53:02",67,1,27,26,30],["New South Wales","Australia","2020-03-11T18:52:04",65,2,4,-33.8688,151.2093],[null,"Lebanon","2020-03-12T09:13:24",61,3,1,33.8547,35.8623],[null,"Finland","2020-03-11T13:33:10",59,0,1,64,26],[null,"Portugal","2020-03-11T13:33:11",59,0,0,39.3999,-8.2245],[null,"Brazil","2020-03-12T01:33:03",52,0,0,-14.235,-51.9253],[null,"Philippines","2020-03-12T09:53:06",52,2,2,12.8797,121.774],[null,"Poland","2020-03-12T13:33:02",49,1,0,51.9194,19.1451],[null,"Romania","2020-03-12T09:13:24",49,0,6,46,25],[null,"Taiwan*","2020-03-12T08:13:09",49,1,20,23.7,121],["British Columbia","Canada","2020-03-12T01:53:03",46,1,4,53.7267,-127.6476],["Diamond Princess","US","2020-03-10T02:33:04",46,0,0,35.4437,139.638],[null,"Saudi Arabia","2020-03-12T01:17:58",45,0,1,24,45],["Colorado","US","2020-03-12T21:39:10",45,0,0,39.0598,-105.3111],[null,"Ireland","2020-03-11T21:33:03",43,1,0,53.1424,-7.6921],["Ontario","Canada","2020-03-12T01:53:03",42,0,4,51.2538,-85.3232],[null,"Vietnam","2020-03-12T09:33:03",39,0,16,16,108],["Florida","US","2020-03-12T21:39:10",35,2,0,27.7663,-81.6868],[null,"Indonesia","2020-03-11T11:14:26",34,1,2,-0.7893,113.9213],["Illinois","US","2020-03-12T23:44:33",32,0,2,40.3495,-88.9861],["Georgia","US","2020-03-12T21:39:10",31,1,0,33.0406,-83.6431],["New Jersey","US","2020-03-12T21:39:10",29,1,0,40.2989,-74.521],[null,"Russia","2020-03-12T08:53:02",28,0,3,60,90],["Texas","US","2020-03-12T23:44:33",27,0,0,31.0545,-97.5635],[null,"Algeria","2020-03-12T09:13:24",24,1,8,28.0339,1.6596],[null,"Georgia","2020-03-11T22:13:12",24,0,0,42.3154,43.3569],["Oregon","US","2020-03-12T23:44:33",24,0,0,44.572,-122.0709],[null,"Albania","2020-03-12T21:39:09",23,1,0,41.1533,20.1683],[null,"Chile","2020-03-11T22:13:12",23,0,0,-35.6751,-71.543],[null,"Costa Rica","2020-03-12T01:33:03",22,0,0,9.7489,-83.7534],["Pennsylvania","US","2020-03-12T21:39:10",22,0,0,40.5908,-77.2098],["Victoria","Australia","2020-03-11T18:52:04",21,0,7,-37.8136,144.9631],["Grand Princess","US","2020-03-10T02:33:04",21,0,0,37.6489,-122.6655],["Queensland","Australia","2020-03-11T18:52:04",20,0,8,-28.0167,153.4],[null,"Pakistan","2020-03-12T08:53:02",20,0,2,30.3753,69.3451],[null,"Argentina","2020-03-11T02:18:16",19,1,0,-38.4161,-63.6167],["Alberta","Canada","2020-03-11T23:13:07",19,0,0,53.9333,-116.5765],[null,"Croatia","2020-03-11T22:13:12",19,0,0,45.1667,15.5],[null,"Luxembourg","2020-03-12T10:53:03",19,0,0,49.8144,6.1317],[null,"Serbia","2020-03-12T09:13:24",19,0,0,44.0165,21.0059],["Louisiana","US","2020-03-12T23:44:33",19,0,0,31.1695,-91.8678],["Qinghai","China","2020-03-11T02:18:14",18,0,18,35.7452,95.9956],[null,"Oman","2020-03-10T08:33:02",18,0,9,21,57],["Tennessee","US","2020-03-12T21:39:10",18,0,0,35.7478,-86.6923],[null,"Ecuador","2020-03-11T09:33:12",17,0,0,-1.8312,-78.1834],[null,"South Africa","2020-03-12T09:13:24",17,0,0,-30.5595,22.9375],["Virginia","US","2020-03-12T21:39:10",17,0,0,37.7693,-78.17],[null,"Estonia","2020-03-11T22:13:12",16,0,0,58.5953,25.0136],[null,"Slovakia","2020-03-12T13:33:02",16,0,0,48.669,19.699],["Iowa","US","2020-03-12T23:44:33",16,0,0,42.0115,-93.2105],[null,"Peru","2020-03-12T08:53:02",15,0,0,-9.19,-75.0152],["North Carolina","US","2020-03-12T21:39:10",15,0,0,35.6301,-79.8064],["Nevada","US","2020-03-12T23:44:33",14,0,0,38.3135,-117.0554],[null,"Hungary","2020-03-11T22:13:12",13,0,0,47.1625,19.5033],["Indiana","US","2020-03-12T23:44:33",13,0,0,39.8494,-86.2583],[null,"Belarus","2020-03-12T08:53:02",12,0,3,53.7098,27.9534],[null,"Mexico","2020-03-12T05:13:03",12,0,4,23,-102],["Maryland","US","2020-03-12T01:53:03",12,0,0,39.0639,-76.8021],["South Carolina","US","2020-03-12T21:39:10",12,0,0,33.8569,-80.945],[null,"Azerbaijan","2020-03-11T08:13:09",11,0,3,40.1431,47.5769],[null,"Bosnia and Herzegovina","2020-03-12T09:13:26",11,0,0,43.9159,17.6791],[null,"Brunei","2020-03-11T22:13:12",11,0,0,4.5353,114.7277],[null,"Panama","2020-03-12T08:53:02",11,1,0,8.538,-80.7821],["Macau","China","2020-03-11T18:52:03",10,0,10,22.1667,113.55],[null,"Latvia","2020-03-11T13:53:24",10,0,1,56.8796,24.6032],["District of Columbia","US","2020-03-11T22:53:03",10,0,0,38.8974,-77.0268],["Kentucky","US","2020-03-12T23:44:33",10,0,0,37.6681,-84.6701],["Nebraska","US","2020-03-12T01:53:03",10,0,0,41.1254,-98.2681],["South Australia","Australia","2020-03-11T18:52:04",9,0,2,-34.9285,138.6007],["Western Australia","Australia","2020-03-11T18:52:04",9,1,0,-31.9505,115.8605],["Quebec","Canada","2020-03-12T01:53:03",9,0,0,52.9399,-73.5491],[null,"Colombia","2020-03-11T14:33:04",9,0,0,4.5709,-74.2973],["Arizona","US","2020-03-11T18:52:04",9,0,1,33.7298,-111.4312],["Minnesota","US","2020-03-12T21:39:10",9,0,0,45.6945,-93.9002],[null,"Maldives","2020-03-11T09:33:12",8,0,0,3.2028,73.2207],["South Dakota","US","2020-03-11T22:53:03",8,1,0,44.2998,-99.4388],["Wisconsin","US","2020-03-12T21:39:10",8,0,1,44.2685,-89.6165],[null,"Afghanistan","2020-03-11T10:13:12",7,0,0,33,65],[null,"Bulgaria","2020-03-11T22:13:12",7,1,0,42.7339,25.4858],[null,"North Macedonia","2020-03-10T10:53:03",7,0,0,41.6086,21.7453],[null,"Tunisia","2020-03-11T18:52:03",7,0,0,33.8869,9.5375],[null,"Cyprus","2020-03-11T18:52:03",6,0,0,35.1264,33.4299],[null,"Malta","2020-03-11T11:33:08",6,0,0,35.9375,14.3754],[null,"Morocco","2020-03-12T01:33:03",6,1,0,31.7917,-7.0926],["Arkansas","US","2020-03-12T21:39:10",6,0,0,34.9697,-92.3731],["New Hampshire","US","2020-03-12T21:39:10",6,0,0,43.4525,-71.5639],[null,"Dominican Republic","2020-03-08T17:23:08",5,0,0,18.7357,-70.1627],[null,"French Guiana","2020-03-07T03:23:05",5,0,0,3.9339,-53.1258],[null,"New Zealand","2020-03-07T02:03:29",5,0,0,-40.9006,174.886],[null,"Paraguay","2020-03-11T04:33:03",5,0,0,-23.4425,-58.4438],["Connecticut","US","2020-03-12T23:44:33",5,0,0,41.5978,-72.7554],["New Mexico","US","2020-03-12T23:44:33",5,0,0,34.8405,-106.2485],["Ohio","US","2020-03-12T09:33:03",5,0,0,40.3888,-82.7649],["Rhode Island","US","2020-03-11T03:13:08",5,0,0,41.6809,-71.5118],["Utah","US","2020-03-12T23:44:33",5,0,0,40.15,-111.8624],[null,"Armenia","2020-03-12T21:39:09",4,0,0,40.0691,45.0382],[null,"Senegal","2020-03-08T20:23:08",4,0,1,14.4974,-14.4524],["Tasmania","Australia","2020-03-11T18:52:04",3,0,0,-41.4545,145.9707],[null,"Bangladesh","2020-03-10T06:19:32",3,0,0,23.685,90.3563],[null,"Cambodia","2020-03-11T09:33:12",3,0,1,12.5657,104.991],[null,"Cuba","2020-03-12T05:53:03",3,0,0,22,-80],[null,"Lithuania","2020-03-11T02:18:26",3,0,0,55.1694,23.8813],[null,"Martinique","2020-03-11T02:18:29",3,0,0,14.6415,-61.0242],[null,"Moldova","2020-03-11T18:52:03",3,0,0,47.4116,28.3699],[null,"Bolivia","2020-03-11T18:52:03",2,0,0,-16.2902,-63.5887],[null,"Burkina Faso","2020-03-11T09:33:12",2,0,0,12.2383,-1.5616],[null,"Cameroon","2020-03-08T05:23:03",2,0,0,3.848,11.5021],["Faroe Islands","Denmark","2020-03-11T20:53:02",2,0,0,61.8926,-6.9118],["St Martin","France","2020-03-11T20:53:02",2,0,0,18.0708,-63.0501],[null,"Honduras","2020-03-11T18:52:03",2,0,0,15.2,-86.2419],[null,"Jamaica","2020-03-12T01:33:03",2,0,0,18.1096,-77.2975],[null,"Monaco","2020-03-12T12:53:03",2,0,0,43.7333,7.4167],[null,"Nigeria","2020-03-09T09:43:03",2,0,0,9.082,8.6753],[null,"Sri Lanka","2020-03-11T09:33:12",2,0,1,7.8731,80.7718],["Hawaii","US","2020-03-10T03:13:17",2,0,0,21.0943,-157.4983],["Michigan","US","2020-03-11T03:33:05",2,0,0,43.3266,-84.5361],["Oklahoma","US","2020-03-10T17:13:25",2,0,0,35.5653,-96.9289],["Vermont","US","2020-03-12T01:53:03",2,0,0,44.0459,-72.7107],["Channel Islands","United Kingdom","2020-03-11T20:53:02",2,0,0,49.3723,-2.3644],[null,"Andorra","2020-03-12T23:44:32",1,0,1,42.5063,1.5218],["Northern Territory","Australia","2020-03-10T14:13:14",1,0,0,-12.4634,130.8456],[null,"Bhutan","2020-03-06T15:43:02",1,0,0,27.5142,90.4336],["New Brunswick","Canada","2020-03-11T23:13:06",1,0,0,46.5653,-66.4619],["Tibet","China","2020-03-11T02:18:14",1,0,1,31.6927,88.0924],[null,"Congo (Kinshasa)","2020-03-11T21:13:24",1,0,0,-4.0383,21.7587],[null,"Cote d'Ivoire","2020-03-12T01:18:01",1,0,0,7.54,-5.5471],["Saint Barthelemy","France","2020-03-11T20:53:02",1,0,0,17.9,-62.8333],[null,"Guyana","2020-03-12T05:53:03",1,1,0,5,-58.75],[null,"Holy See","2020-03-10T19:13:21",1,0,0,41.9029,12.4534],[null,"Jordan","2020-03-03T15:33:02",1,0,0,31.24,36.51],[null,"Liechtenstein","2020-03-04T01:33:07",1,0,0,47.14,9.55],[null,"Mongolia","2020-03-10T06:13:43",1,0,0,46.8625,103.8467],[null,"Nepal","2020-03-10T08:33:03",1,0,1,28.3949,84.124],[null,"Reunion","2020-03-11T23:13:07",1,0,0,-21.1151,55.5364],[null,"Togo","2020-03-07T02:13:09",1,0,0,8.6195,0.8248],[null,"Turkey","2020-03-11T03:33:05",1,0,0,38.9637,35.2433],["Delaware","US","2020-03-11T23:13:06",1,0,0,39.3185,-75.5071],["Kansas","US","2020-03-10T03:13:17",1,0,0,38.5266,-96.7265],["Mississippi","US","2020-03-12T09:33:03",1,0,0,32.7416,-89.6787],["Missouri","US","2020-03-10T03:13:17",1,0,0,38.4561,-92.2884],["Montana","US","2020-03-11T23:13:06",1,0,0,46.9219,-110.4544],["North Dakota","US","2020-03-12T09:33:03",1,0,0,47.5289,-99.784],["Wyoming","US","2020-03-12T03:13:09",1,0,0,42.756,-107.3025],[null,"Ukraine","2020-03-03T15:33:02",1,0,0,48.3794,31.1656],["Gibraltar","United Kingdom","2020-03-11T20:53:02",1,0,1,36.1408,-5.3536],["From Diamond Princess","Australia","2020-02-29T02:03:10",0,0,0,35.4437,139.638],["Gansu","Mainland China","2020-03-11T02:18:28",0,0,0,36.0611,103.8343],["Hebei","Mainland China","2020-03-11T02:18:29",0,0,0,38.0428,114.5149],["Alaska","US","2020-03-10T02:33:04",0,0,0,61.3707,-152.4044],["Idaho","US","2020-03-10T02:33:04",0,0,0,44.2405,-114.4788],["Maine","US","2020-03-10T02:33:04",0,0,0,44.6939,-69.3819],["West Virginia","US","2020-03-10T02:33:04",0,0,0,38.4912,-80.9545],[null,"occupied Palestinian territory","2020-03-11T20:53:02",0,0,0,31.9522,35.2332]],"fields":[{"name":"Province/State","type":"string","format":"","analyzerType":"STRING"},{"name":"Country/Region","type":"string","format":"","analyzerType":"STRING"},{"name":"Last Update","type":"timestamp","format":"YYYY-M-DTH:m:s","analyzerType":"DATETIME"},{"name":"Confirmed","type":"integer","format":"","analyzerType":"INT"},{"name":"Deaths","type":"integer","format":"","analyzerType":"INT"},{"name":"Recovered","type":"integer","format":"","analyzerType":"INT"},{"name":"Latitude","type":"real","format":"","analyzerType":"FLOAT"},{"name":"Longitude","type":"real","format":"","analyzerType":"FLOAT"}]}}];
+            const config = {"version":"v1","config":{"visState":{"filters":[],"layers":[{"id":"97vrpg","type":"point","config":{"dataId":"4gjxuese","label":"Confirmed Cases","color":[183,136,94],"columns":{"lat":"Latitude","lng":"Longitude","altitude":null},"isVisible":true,"visConfig":{"radius":0.1,"fixedRadius":false,"opacity":0.8,"outline":false,"thickness":2,"strokeColor":null,"colorRange":{"name":"Global Warming","type":"sequential","category":"Uber","colors":["#5A1846","#900C3F","#C70039","#E3611C","#F1920E","#FFC300"]},"strokeColorRange":{"name":"Global Warming","type":"sequential","category":"Uber","colors":["#5A1846","#900C3F","#C70039","#E3611C","#F1920E","#FFC300"]},"radiusRange":[0,50],"filled":true},"textLabel":[{"field":{"name":"Confirmed","type":"integer"},"color":[255,255,255],"size":18,"offset":[0,0],"anchor":"start","alignment":"center"}]},"visualChannels":{"colorField":null,"colorScale":"quantile","strokeColorField":null,"strokeColorScale":"quantile","sizeField":null,"sizeScale":"linear"}},{"id":"gxxtjcs","type":"point","config":{"dataId":"4gjxuese","label":"State","color":[254,137,26],"columns":{"lat":"Latitude","lng":"Longitude","altitude":null},"isVisible":true,"visConfig":{"radius":99.9,"fixedRadius":false,"opacity":0.8,"outline":false,"thickness":2,"strokeColor":null,"colorRange":{"name":"Global Warming","type":"sequential","category":"Uber","colors":["#5A1846","#900C3F","#C70039","#E3611C","#F1920E","#FFC300"]},"strokeColorRange":{"name":"Global Warming","type":"sequential","category":"Uber","colors":["#5A1846","#900C3F","#C70039","#E3611C","#F1920E","#FFC300"]},"radiusRange":[0,50],"filled":true},"textLabel":[{"field":{"name":"Province/State","type":"string"},"color":[255,255,255],"size":18,"offset":[0,0],"anchor":"start","alignment":"center"}]},"visualChannels":{"colorField":null,"colorScale":"quantile","strokeColorField":null,"strokeColorScale":"quantile","sizeField":null,"sizeScale":"linear"}}],"interactionConfig":{"tooltip":{"fieldsToShow":{"4gjxuese":["Province/State","Country/Region","Last Update","Confirmed","Deaths"]},"enabled":true},"brush":{"size":0.5,"enabled":false},"coordinate":{"enabled":false}},"layerBlending":"normal","splitMaps":[],"animationConfig":{"currentTime":null,"speed":1}},"mapState":{"bearing":0,"dragRotate":false,"latitude":38.618198756933175,"longitude":-78.5220566444161,"pitch":0,"zoom":5.6698734408306795,"isSplit":false},"mapStyle":{"styleType":"muted_night","topLayerGroups":{},"visibleLayerGroups":{"label":false,"road":true,"border":true,"building":true,"water":true,"land":true,"3d building":true},"threeDBuildingColor":[26.848523094644484,31.1442867897876,35.440050484930715],"mapStyles":{}}}};
+
+            const loadedData = keplerGl.KeplerGlSchema.load(
+              datasets,
+              config
+            );
+
+            store.dispatch(keplerGl.addDataToMap({
+              datasets: loadedData.datasets,
+              config: loadedData.config,
+              options: {
+                centerMap: false
+              }
+            }));
+          }(KeplerGl, store))
+        </script>
+      </body>
+    </html>
+  
